@@ -56,7 +56,7 @@ public class DeferredUpdateManager extends UpdateManager {
 	private boolean updateQueued;
 
 	private boolean updating;
-	private boolean validating;
+	protected boolean validating;
 	private RunnableChain afterUpdate;
 	private int refreshRate = -1;
 

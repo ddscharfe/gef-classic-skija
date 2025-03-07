@@ -18,8 +18,13 @@ import java.util.List;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.NativeGC;
+import org.eclipse.swt.graphics.SkijaGC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.opengl.GLCanvas;
+import org.eclipse.swt.opengl.GLData;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
@@ -29,10 +34,11 @@ import org.eclipse.draw2d.AbsoluteBendpoint;
 import org.eclipse.draw2d.BendpointConnectionRouter;
 import org.eclipse.draw2d.ChopboxAnchor;
 import org.eclipse.draw2d.ColorConstants;
+import org.eclipse.draw2d.DeferredUpdateManager;
 import org.eclipse.draw2d.Figure;
-import org.eclipse.draw2d.FigureCanvas;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.Label;
+import org.eclipse.draw2d.LightweightSystem;
 import org.eclipse.draw2d.LineBorder;
 import org.eclipse.draw2d.PolygonDecoration;
 import org.eclipse.draw2d.PolylineConnection;
@@ -42,6 +48,16 @@ import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.draw2d.graph.Edge;
 import org.eclipse.draw2d.graph.Node;
 import org.eclipse.draw2d.graph.NodeList;
+
+import io.github.humbleui.skija.BackendRenderTarget;
+import io.github.humbleui.skija.ColorSpace;
+import io.github.humbleui.skija.DirectContext;
+import io.github.humbleui.skija.FramebufferFormat;
+import io.github.humbleui.skija.PixelGeometry;
+import io.github.humbleui.skija.Surface;
+import io.github.humbleui.skija.SurfaceColorFormat;
+import io.github.humbleui.skija.SurfaceOrigin;
+import io.github.humbleui.skija.SurfaceProps;
 
 /**
  * @author Daniel Lee
@@ -59,7 +75,7 @@ public abstract class AbstractGraphDemo {
 	/** Demo shell */
 	protected Shell shell;
 
-	private FigureCanvas fc;
+	private GLCanvas fc;
 
 	static class TopOrBottomAnchor extends ChopboxAnchor {
 		public TopOrBottomAnchor(IFigure owner) {
@@ -196,7 +212,7 @@ public abstract class AbstractGraphDemo {
 	 *
 	 * @return this demo's FigureCanvas
 	 */
-	protected FigureCanvas getFigureCanvas() {
+	protected GLCanvas getFigureCanvas() {
 		return fc;
 	}
 
@@ -229,7 +245,7 @@ public abstract class AbstractGraphDemo {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				setGraphMethod(graphList.getItem(graphList.getSelectionIndex()));
-				getFigureCanvas().setContents(getContents());
+				lws.setContents(getContents());
 			}
 
 			@Override
@@ -271,7 +287,7 @@ public abstract class AbstractGraphDemo {
 					graphDirection = PositionConstants.EAST;
 					break;
 				}
-				getFigureCanvas().setContents(getContents());
+				lws.setContents(getContents());
 			}
 
 			@Override
@@ -280,6 +296,13 @@ public abstract class AbstractGraphDemo {
 		});
 		directionCombo.select(0);
 	}
+
+	private Display display;
+	private GLCanvas glCanvas;
+	private DirectContext context;
+	private Surface surface;
+	private BackendRenderTarget renderTarget;
+	private LightweightSystem lws;
 
 	/**
 	 * Runs the demo.
@@ -292,10 +315,43 @@ public abstract class AbstractGraphDemo {
 		hookShell();
 		shell.setText(appName);
 		shell.setLayout(new GridLayout(2, false));
-		setFigureCanvas(new FigureCanvas(shell));
-		getFigureCanvas().setContents(contents = getContents());
-		getFigureCanvas().getViewport().setContentsTracksHeight(true);
-		getFigureCanvas().getViewport().setContentsTracksWidth(true);
+		GLData data = new GLData();
+		data.doubleBuffer = true;
+
+		GLCanvas glCanvas = new GLCanvas(shell, SWT.NO_BACKGROUND | SWT.NO_REDRAW_RESIZE, data);
+		glCanvas.setCurrent();
+		DirectContext context = DirectContext.makeGL();
+
+		lws = new LightweightSystem(glCanvas);
+		lws.setControl(glCanvas);
+		lws.setContents(getContents());
+		lws.setUpdateManager(new DeferredUpdateManager() {
+			@Override
+			protected void paint(GC gc) {
+				if (!validating) {
+					if (surface == null || glCanvas.getBounds().width != surface.getWidth()
+							|| glCanvas.getBounds().height != surface.getHeight()) {
+						release();
+						org.eclipse.swt.graphics.Rectangle rect = glCanvas.getClientArea();
+						renderTarget = BackendRenderTarget.makeGL(rect.width, rect.height, /* samples */ 0,
+								/* stencil */ 8, /* fbid */ 0, FramebufferFormat.GR_GL_RGBA8);
+						surface = Surface.makeFromBackendRenderTarget(context, renderTarget, SurfaceOrigin.BOTTOM_LEFT,
+								SurfaceColorFormat.RGBA_8888, ColorSpace.getDisplayP3(),
+								new SurfaceProps(PixelGeometry.RGB_H));
+					}
+					gc.innerGC = new SkijaGC((NativeGC) gc.innerGC, surface);
+					surface.getCanvas().clear(0xFFFFFFFF);
+					gc.setAlpha(255);
+					super.paint(gc);
+					context.flush();
+					glCanvas.swapBuffers();
+				} else {
+					super.paint(gc);
+				}
+			}
+		});
+
+		setFigureCanvas(glCanvas);
 		getFigureCanvas().setLayoutData(new GridData(GridData.FILL_BOTH));
 		shell.setSize(1100, 700);
 		shell.open();
@@ -306,12 +362,23 @@ public abstract class AbstractGraphDemo {
 		}
 	}
 
+	protected void release() {
+		if (surface != null) {
+			surface.close();
+			surface = null;
+		}
+		if (renderTarget != null) {
+			renderTarget.close();
+			renderTarget = null;
+		}
+	}
+
 	/**
 	 * Sets this demo's FigureCanvas
 	 *
 	 * @param canvas this demo's FigureCanvas
 	 */
-	protected void setFigureCanvas(FigureCanvas canvas) {
+	protected void setFigureCanvas(GLCanvas canvas) {
 		this.fc = canvas;
 	}
 
