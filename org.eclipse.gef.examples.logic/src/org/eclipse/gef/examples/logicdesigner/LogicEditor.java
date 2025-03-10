@@ -86,7 +86,6 @@ import org.eclipse.draw2d.zoom.MouseLocationZoomScrollPolicy;
 import org.eclipse.gef.ContextMenuProvider;
 import org.eclipse.gef.DefaultEditDomain;
 import org.eclipse.gef.EditPartViewer;
-import org.eclipse.gef.GraphicalViewer;
 import org.eclipse.gef.KeyHandler;
 import org.eclipse.gef.KeyStroke;
 import org.eclipse.gef.LayerConstants;
@@ -430,13 +429,13 @@ public class LogicEditor extends GraphicalEditorWithFlyoutPalette {
 	@Override
 	public void commandStackChanged(EventObject event) {
 		firePropertyChange(IEditorPart.PROP_DIRTY);
-//		super.commandStackChanged(event);
+		super.commandStackChanged(event);
 	}
 
 	@Override
 	protected void configureGraphicalViewer() {
 		super.configureGraphicalViewer();
-		GraphicalViewer viewer = getGraphicalViewer();
+		ScrollingGraphicalViewer viewer = (ScrollingGraphicalViewer) getGraphicalViewer();
 
 		ScalableFreeformRootEditPart rootEP = new ScalableFreeformRootEditPart(true);
 
@@ -444,7 +443,7 @@ public class LogicEditor extends GraphicalEditorWithFlyoutPalette {
 		ConnectionLayer connectionLayer = (ConnectionLayer) rootEP.getLayer(LayerConstants.CONNECTION_LAYER);
 		connectionLayer.setClippingStrategy(new ViewportAwareConnectionLayerClippingStrategy(connectionLayer));
 
-//		configureZoomManager(viewer, rootEP.getZoomManager());
+		configureZoomManager(viewer, rootEP.getZoomManager());
 
 		viewer.setRootEditPart(rootEP);
 
@@ -702,7 +701,7 @@ public class LogicEditor extends GraphicalEditorWithFlyoutPalette {
 	protected void createGraphicalViewer(Composite parent) {
 		rulerComp = new RulerComposite(parent, SWT.NONE);
 		super.createGraphicalViewer(rulerComp);
-		rulerComp.setGraphicalViewer(getGraphicalViewer());
+		rulerComp.setGraphicalViewer((ScrollingGraphicalViewer) getGraphicalViewer());
 	}
 
 	protected FigureCanvas getEditor() {
