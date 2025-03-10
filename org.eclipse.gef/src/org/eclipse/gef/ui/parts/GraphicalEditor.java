@@ -38,10 +38,8 @@ import org.eclipse.ui.part.EditorPart;
 
 import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.draw2d.DeferredUpdateManager;
-import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.LightweightSystem;
-import org.eclipse.draw2d.geometry.Rectangle;
 
 import org.eclipse.gef.ContextMenuProvider;
 import org.eclipse.gef.DefaultEditDomain;
@@ -192,7 +190,7 @@ public abstract class GraphicalEditor extends EditorPart
 
 			@Override
 			protected LightweightSystem createLightweightSystem() {
-				LightweightSystem lws = new LightweightSystem(glCanvas);
+				LightweightSystem lws = super.createLightweightSystem();
 
 				lws.setUpdateManager(new DeferredUpdateManager() {
 					@Override
@@ -220,16 +218,6 @@ public abstract class GraphicalEditor extends EditorPart
 							super.paint(gc);
 						}
 					}
-
-					@Override
-					protected Graphics getGraphics(Rectangle region) {
-						return super.getGraphics(region);
-					}
-
-					@Override
-					protected void releaseGraphics(Graphics graphics) {
-						super.releaseGraphics(graphics);
-					}
 				});
 
 				parent.addListener(SWT.Dispose, event -> {
@@ -239,6 +227,7 @@ public abstract class GraphicalEditor extends EditorPart
 					}
 				});
 
+				lws.setControl(glCanvas);
 				return lws;
 			}
 
