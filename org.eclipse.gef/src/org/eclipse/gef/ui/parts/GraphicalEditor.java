@@ -152,7 +152,7 @@ public abstract class GraphicalEditor extends EditorPart
 	 * @param parent the parent composite
 	 */
 	protected void createGraphicalViewer(Composite parent) {
-		GraphicalViewer viewer = new ScrollingGraphicalViewer();
+		GraphicalViewer viewer = new ScrollingGraphicalGLViewer();
 		viewer.createControl(parent);
 		setGraphicalViewer(viewer);
 		configureGraphicalViewer();

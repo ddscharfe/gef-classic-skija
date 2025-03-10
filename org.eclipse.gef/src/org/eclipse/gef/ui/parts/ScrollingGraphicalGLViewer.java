@@ -56,9 +56,18 @@ public class ScrollingGraphicalGLViewer extends ScrollingGraphicalViewer {
 			@Override
 			public Graphics getGraphics(Rectangle region) {
 				if (canvas == null) {
+
 					canvas = (GLCanvas) getControl();
 					canvas.setCurrent();
 					context = DirectContext.makeGL();
+
+					canvas.addListener(SWT.Dispose, event -> {
+						if (event.type == SWT.Dispose) {
+							release();
+							context.close();
+						}
+					});
+					lws.setControl(canvas);
 				}
 				canvas.redraw();
 				return null;
@@ -77,7 +86,7 @@ public class ScrollingGraphicalGLViewer extends ScrollingGraphicalViewer {
 
 			@Override
 			protected void paint(GC gc) {
-				if (!validating) {
+				if (canvas != null && !validating) {
 					if (surface == null || canvas.getBounds().width != surface.getWidth()
 							|| canvas.getBounds().height != surface.getHeight()) {
 						release();
@@ -98,13 +107,6 @@ public class ScrollingGraphicalGLViewer extends ScrollingGraphicalViewer {
 				} else {
 					super.paint(gc);
 				}
-			}
-		});
-
-		canvas.addListener(SWT.Dispose, event -> {
-			if (event.type == SWT.Dispose) {
-				release();
-				context.close();
 			}
 		});
 
