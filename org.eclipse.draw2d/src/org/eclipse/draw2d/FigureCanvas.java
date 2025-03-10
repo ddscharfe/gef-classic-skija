@@ -18,7 +18,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.widgets.Canvas;
+import org.eclipse.swt.opengl.GLCanvas;
+import org.eclipse.swt.opengl.GLData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 
@@ -47,7 +48,7 @@ import org.eclipse.draw2d.geometry.Rectangle;
  * Note: Only one of the styles RIGHT_TO_LEFT, LEFT_TO_RIGHT may be specified.
  * </p>
  */
-public class FigureCanvas extends Canvas {
+public class FigureCanvas extends GLCanvas {
 
 	private static final int ACCEPTED_STYLES = SWT.RIGHT_TO_LEFT | SWT.LEFT_TO_RIGHT | SWT.V_SCROLL | SWT.H_SCROLL
 			| SWT.NO_BACKGROUND | SWT.NO_REDRAW_RESIZE | SWT.DOUBLE_BUFFERED | SWT.BORDER;
@@ -154,12 +155,18 @@ public class FigureCanvas extends Canvas {
 	 * @since 3.4
 	 */
 	public FigureCanvas(int style, Composite parent, LightweightSystem lws) {
-		super(parent, checkStyle(style));
+		super(parent, checkStyle(style), createData());
 		getHorizontalBar().setVisible(false);
 		getVerticalBar().setVisible(false);
 		this.lws = lws;
 		lws.setControl(this);
 		hook();
+	}
+
+	private static GLData createData() {
+		GLData data = new GLData();
+		data.doubleBuffer = true;
+		return data;
 	}
 
 	/**

@@ -73,7 +73,7 @@ public class RulerComposite extends Composite {
 
 	private EditDomain rulerEditDomain;
 	private GraphicalViewer left, top;
-	private Canvas editor;
+	private FigureCanvas editor;
 	private GraphicalViewer diagramViewer;
 	private Font font;
 	private Listener layoutListener;
@@ -159,9 +159,9 @@ public class RulerComposite extends Composite {
 		}
 		canvas.setFont(font);
 		if (isHorizontal) {
-//			canvas.getViewport().setHorizontalRangeModel(editor.getViewport().getHorizontalRangeModel());
+			canvas.getViewport().setHorizontalRangeModel(editor.getViewport().getHorizontalRangeModel());
 		} else {
-//			canvas.getViewport().setVerticalRangeModel(editor.getViewport().getVerticalRangeModel());
+			canvas.getViewport().setVerticalRangeModel(editor.getViewport().getVerticalRangeModel());
 		}
 
 		// Add the viewer to the rulerEditDomain
@@ -297,44 +297,36 @@ public class RulerComposite extends Composite {
 	 * @param primaryViewer The graphical viewer for which the rulers have to be
 	 *                      created
 	 */
-	public void setGraphicalViewer(GraphicalViewer primaryViewer) {
+	public void setGraphicalViewer(ScrollingGraphicalViewer primaryViewer) {
 		// pre-conditions
 		Assert.isNotNull(primaryViewer);
 		Assert.isNotNull(primaryViewer.getControl());
 		Assert.isTrue(diagramViewer == null);
 
 		diagramViewer = primaryViewer;
-		editor = (Canvas) diagramViewer.getControl();
+		editor = (FigureCanvas) diagramViewer.getControl();
 
 		// layout whenever the scrollbars are shown or hidden, and whenever the
 		// RulerComposite
 		// is resized
 		layoutListener = event -> layout(true);
 		addListener(SWT.Resize, layoutListener);
-//		editor.getHorizontalBar().addListener(SWT.Show, layoutListener);
-//		editor.getHorizontalBar().addListener(SWT.Hide, layoutListener);
-//		editor.getVerticalBar().addListener(SWT.Show, layoutListener);
-//		editor.getVerticalBar().addListener(SWT.Hide, layoutListener);
+		editor.getHorizontalBar().addListener(SWT.Show, layoutListener);
+		editor.getHorizontalBar().addListener(SWT.Hide, layoutListener);
+		editor.getVerticalBar().addListener(SWT.Show, layoutListener);
+		editor.getVerticalBar().addListener(SWT.Hide, layoutListener);
 
 		propertyListener = evt -> {
 			String property = evt.getPropertyName();
-			if (property != null) {
-				switch (property) {
-				case RulerProvider.PROPERTY_HORIZONTAL_RULER:
-					setRuler((RulerProvider) diagramViewer.getProperty(RulerProvider.PROPERTY_HORIZONTAL_RULER),
-							PositionConstants.NORTH);
-					break;
-				case RulerProvider.PROPERTY_VERTICAL_RULER:
-					setRuler((RulerProvider) diagramViewer.getProperty(RulerProvider.PROPERTY_VERTICAL_RULER),
-							PositionConstants.WEST);
-					break;
-				case RulerProvider.PROPERTY_RULER_VISIBILITY:
-					setRulerVisibility(((Boolean) diagramViewer.getProperty(RulerProvider.PROPERTY_RULER_VISIBILITY))
-							.booleanValue());
-					break;
-				default:
-					break;
-				}
+			if (RulerProvider.PROPERTY_HORIZONTAL_RULER.equals(property)) {
+				setRuler((RulerProvider) diagramViewer.getProperty(RulerProvider.PROPERTY_HORIZONTAL_RULER),
+						PositionConstants.NORTH);
+			} else if (RulerProvider.PROPERTY_VERTICAL_RULER.equals(property)) {
+				setRuler((RulerProvider) diagramViewer.getProperty(RulerProvider.PROPERTY_VERTICAL_RULER),
+						PositionConstants.WEST);
+			} else if (RulerProvider.PROPERTY_RULER_VISIBILITY.equals(property)) {
+				setRulerVisibility(((Boolean) diagramViewer.getProperty(RulerProvider.PROPERTY_RULER_VISIBILITY))
+						.booleanValue());
 			}
 		};
 		diagramViewer.addPropertyChangeListener(propertyListener);
@@ -610,7 +602,7 @@ public class RulerComposite extends Composite {
 	 * @return The editor figure canvas.
 	 * @since 3.6
 	 */
-	protected Canvas getEditor() {
+	protected FigureCanvas getEditor() {
 		return editor;
 	}
 }

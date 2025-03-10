@@ -16,14 +16,7 @@ import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.List;
 
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.GC;
-import org.eclipse.swt.graphics.NativeGC;
-import org.eclipse.swt.graphics.SkijaGC;
-import org.eclipse.swt.opengl.GLCanvas;
-import org.eclipse.swt.opengl.GLData;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.viewers.ISelection;
@@ -37,9 +30,7 @@ import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.part.EditorPart;
 
 import org.eclipse.draw2d.ColorConstants;
-import org.eclipse.draw2d.DeferredUpdateManager;
 import org.eclipse.draw2d.IFigure;
-import org.eclipse.draw2d.LightweightSystem;
 
 import org.eclipse.gef.ContextMenuProvider;
 import org.eclipse.gef.DefaultEditDomain;
@@ -60,16 +51,6 @@ import org.eclipse.gef.ui.actions.SelectAllAction;
 import org.eclipse.gef.ui.actions.UndoAction;
 import org.eclipse.gef.ui.actions.UpdateAction;
 import org.eclipse.gef.ui.properties.UndoablePropertySheetPage;
-
-import io.github.humbleui.skija.BackendRenderTarget;
-import io.github.humbleui.skija.ColorSpace;
-import io.github.humbleui.skija.DirectContext;
-import io.github.humbleui.skija.FramebufferFormat;
-import io.github.humbleui.skija.PixelGeometry;
-import io.github.humbleui.skija.Surface;
-import io.github.humbleui.skija.SurfaceColorFormat;
-import io.github.humbleui.skija.SurfaceOrigin;
-import io.github.humbleui.skija.SurfaceProps;
 
 /**
  * This class serves as a quick starting point for clients who are new to GEF.
@@ -165,84 +146,13 @@ public abstract class GraphicalEditor extends EditorPart
 		registry.registerAction(new PrintAction(this));
 	}
 
-	private DirectContext context;
-	private Surface surface;
-	private BackendRenderTarget renderTarget;
-
 	/**
 	 * Creates the GraphicalViewer on the specified <code>Composite</code>.
 	 *
 	 * @param parent the parent composite
 	 */
 	protected void createGraphicalViewer(Composite parent) {
-		GLData data = new GLData();
-		data.doubleBuffer = true;
-
-		GLCanvas glCanvas = new GLCanvas(parent, SWT.NO_BACKGROUND | SWT.NO_REDRAW_RESIZE, data);
-		glCanvas.setCurrent();
-		context = DirectContext.makeGL();
-		GraphicalViewer viewer = new GraphicalViewerImpl() {
-			@Override
-			public Control createControl(Composite composite) {
-				setControl(glCanvas);
-				return getControl();
-			}
-
-			@Override
-			protected LightweightSystem createLightweightSystem() {
-				LightweightSystem lws = super.createLightweightSystem();
-
-				lws.setUpdateManager(new DeferredUpdateManager() {
-					@Override
-					protected void paint(GC gc) {
-						if (!validating) {
-							if (surface == null || glCanvas.getBounds().width != surface.getWidth()
-									|| glCanvas.getBounds().height != surface.getHeight()) {
-								release();
-								org.eclipse.swt.graphics.Rectangle rect = glCanvas.getClientArea();
-								renderTarget = BackendRenderTarget.makeGL(rect.width, rect.height, /* samples */ 0,
-										/* stencil */ 8, /* fbid */ 0, FramebufferFormat.GR_GL_RGBA8);
-								surface = Surface.makeFromBackendRenderTarget(context, renderTarget,
-										SurfaceOrigin.BOTTOM_LEFT, SurfaceColorFormat.RGBA_8888,
-										ColorSpace.getDisplayP3(), new SurfaceProps(PixelGeometry.RGB_H));
-							}
-							if (gc.innerGC instanceof NativeGC nat) {
-								gc.innerGC = new SkijaGC(nat, surface);
-							}
-							surface.getCanvas().clear(0xFFFFFFFF);
-							gc.setAlpha(255);
-							super.paint(gc);
-							context.flush();
-							glCanvas.swapBuffers();
-						} else {
-							super.paint(gc);
-						}
-					}
-				});
-
-				parent.addListener(SWT.Dispose, event -> {
-					if (event.type == SWT.Dispose) {
-						release();
-						context.close();
-					}
-				});
-
-				lws.setControl(glCanvas);
-				return lws;
-			}
-
-			protected void release() {
-				if (surface != null) {
-					surface.close();
-					surface = null;
-				}
-				if (renderTarget != null) {
-					renderTarget.close();
-					renderTarget = null;
-				}
-			}
-
-		};
+		GraphicalViewer viewer = new ScrollingGraphicalViewer();
 		viewer.createControl(parent);
 		setGraphicalViewer(viewer);
 		configureGraphicalViewer();

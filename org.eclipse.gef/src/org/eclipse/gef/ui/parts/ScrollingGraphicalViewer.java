@@ -52,9 +52,13 @@ public class ScrollingGraphicalViewer extends GraphicalViewerImpl {
 	 */
 	@Override
 	public final Control createControl(Composite parent) {
-		setControl(new FigureCanvas(parent, getLightweightSystem()));
+		setControl(createCanvas(parent));
 		hookRootFigure();
 		return getControl();
+	}
+
+	protected FigureCanvas createCanvas(Composite parent) {
+		return new FigureCanvas(parent, getLightweightSystem());
 	}
 
 	/**
