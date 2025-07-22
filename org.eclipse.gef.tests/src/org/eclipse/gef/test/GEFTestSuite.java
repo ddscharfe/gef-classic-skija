@@ -32,7 +32,8 @@ import org.junit.platform.suite.api.Suite;
 	GraphicalViewerTest.class,
 	PaletteColorProviderTest.class,
 	SWTBotTestSuite.class,
-	DirectEditManagerTest.class
+	DirectEditManagerTest.class,
+	DirectEditManagerWithMockTest.class
 })
 public class GEFTestSuite {
 }
